@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Group Chat</title>
+    <link href="https://fonts.googleapis.com/css?family=Quicksand:400,700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8cdda 0%, #1d2b64 100%);
+            color: #fff;
+            font-family: 'Quicksand', Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+        }
+        #chat {
+            width: 90%;
+            max-width: 600px;
+            margin: 40px auto;
+            background: rgba(255,255,255,0.15);
+            border-radius: 18px;
+            padding: 28px 24px 20px 24px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.18);
+            animation: popIn 0.7s cubic-bezier(.68,-0.55,.27,1.55);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.8) translateY(40px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        #chat h2 {
+            text-align: center;
+            font-weight: 700;
+            font-size: 2.2em;
+            margin-bottom: 18px;
+            letter-spacing: 1px;
+            color: #ffb6b9;
+            text-shadow: 0 2px 8px #fff3;
+        }
+        #messages {
+            height: 300px;
+            overflow-y: auto;
+            border: none;
+            padding: 12px;
+            background: rgba(255,255,255,0.10);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px #0001;
+            transition: background 0.3s;
+        }
+        #messages div {
+            margin-bottom: 10px;
+            padding: 8px 14px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.22);
+            color: #222;
+            font-size: 1.08em;
+            max-width: 80%;
+            word-break: break-word;
+            box-shadow: 0 1px 4px #0001;
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+            animation: msgIn 0.4s cubic-bezier(.68,-0.55,.27,1.55) forwards;
+        }
+        @keyframes msgIn {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        #messages div:nth-child(even) {
+            background: #ffe0ec;
+            color: #1d2b64;
+            align-self: flex-end;
+        }
+        #messages div.system {
+            background: transparent;
+            color: #ffb6b9;
+            font-style: italic;
+            text-align: center;
+            box-shadow: none;
+            padding: 4px 0;
+        }
+        #input {
+            display: flex;
+            margin-top: 10px;
+            gap: 0;
+        }
+        #input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 24px 0 0 24px;
+            font-size: 1.1em;
+            background: #fff;
+            color: #222;
+            outline: none;
+            transition: box-shadow 0.2s;
+            box-shadow: 0 2px 8px #0001;
+        }
+        #input input:focus {
+            box-shadow: 0 4px 16px #ffb6b9aa;
+        }
+        #input button {
+            padding: 12px 28px;
+            border: none;
+            background: linear-gradient(135deg, #ffb6b9 0%, #f8cdda 100%);
+            color: #1d2b64;
+            border-radius: 0 24px 24px 0;
+            font-weight: bold;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, transform 0.1s;
+            box-shadow: 0 2px 8px #0001;
+        }
+        #input button:hover {
+            background: linear-gradient(135deg, #f8cdda 0%, #ffb6b9 100%);
+            color: #fff;
+            transform: scale(1.05);
+        }
+        /* Cute emoji mascot */
+        .mascot {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            animation: mascotBounce 2s infinite alternate cubic-bezier(.68,-0.55,.27,1.55);
+        }
+        @keyframes mascotBounce {
+            0% { transform: translateY(0);}
+            100% { transform: translateY(-10px);}
+        }
+        /* Scrollbar styling */
+        #messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        #messages::-webkit-scrollbar-thumb {
+            background: #ffb6b9;
+            border-radius: 8px;
+        }
+        #messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat">
+        <div class="mascot">🐻‍❄️</div>
+        <h2>Group Chat</h2>
+        <div id="messages"></div>
+        <form id="input" autocomplete="off">
+            <input id="msg" type="text" placeholder="Type your message..." required />
+            <button type="submit">Send 💌</button>
+        </form>
+    </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        // Connect to public Socket.IO server (for demo purposes)
+        const socket = io("https://socketio-chat-h9jt.herokuapp.com/");
+
+        // Prompt for a username
+        let username = prompt("Enter your name:");
+        if (!username) username = "Anonymous";
+
+        // Join the chat
+        socket.emit('add user', username);
+
+        const messages = document.getElementById('messages');
+        const form = document.getElementById('input');
+        const input = document.getElementById('msg');
+
+        // Display a message
+        function addMessage(msg, isSystem, isSelf) {
+            const div = document.createElement('div');
+            div.textContent = msg;
+            if (isSystem) div.classList.add('system');
+            if (isSelf) div.style.background = 'linear-gradient(135deg,#f8cdda 0%,#ffb6b9 100%)';
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // Receive messages
+        socket.on('new message', function(data) {
+            addMessage(`${data.username}: ${data.message}`);
+        });
+
+        // Notify when a user joins
+        socket.on('user joined', function(data) {
+            addMessage(`✨ ${data.username} joined the chat! ✨`, true);
+        });
+
+        // Notify when a user leaves
+        socket.on('user left', function(data) {
+            addMessage(`💨 ${data.username} left the chat.`, true);
+        });
+
+        // Send message
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (input.value.trim()) {
+                socket.emit('new message', input.value);
+                addMessage(`You: ${input.value}`, false, true);
+                input.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
